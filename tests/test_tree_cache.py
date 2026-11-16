@@ -108,6 +108,13 @@ class TestTreeCacheReadWrite:
         write_tree_cache(str(tmp_path), COMMIT_HASH, _entries())
         assert read_tree_cache(str(tmp_path), COMMIT_HASH) == _entries()
 
+    def test_write_invalid_entries_never_reaches_memory_or_disk_reads(self, tmp_path: Path):
+        # In-memory hits are served without re-validation, so `write_tree_cache` must not seed memory with an invalid listing.
+        write_tree_cache(str(tmp_path), COMMIT_HASH, _entries_with_masked_xet_hash())
+        assert read_tree_cache(str(tmp_path), COMMIT_HASH) is None  # in-memory path
+        _IN_MEMORY_TREE_CACHE.pop(_tree_cache_path(str(tmp_path), COMMIT_HASH), None)
+        assert read_tree_cache(str(tmp_path), COMMIT_HASH) is None  # on-disk path
+
     def test_unknown_format_version_returns_none(self, tmp_path: Path):
         path = tmp_path / "trees" / f"{COMMIT_HASH}.json"
         path.parent.mkdir(parents=True)

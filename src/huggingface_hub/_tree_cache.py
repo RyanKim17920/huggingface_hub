@@ -101,9 +101,10 @@ def read_tree_cache(tree_cache_folder: str, commit_hash: str) -> dict[str, TreeC
     """Return the cached tree listing for a commit hash, or `None` if not cached, invalid, or unreadable."""
     path = _tree_cache_path(tree_cache_folder, commit_hash)
     with _IN_MEMORY_TREE_CACHE_LOCK:
+        # Only validated listings are stored in memory (see below and `write_tree_cache`), so a hit is returned as-is
+        # instead of re-validating every entry on each lookup (once per downloaded file in `snapshot_download`).
         if path in _IN_MEMORY_TREE_CACHE:
-            cached_entries = _IN_MEMORY_TREE_CACHE[path]
-            return cached_entries if is_valid_tree_entries(cached_entries) else None
+            return _IN_MEMORY_TREE_CACHE[path]
     entries = _read_tree_cache_from_disk(path)
     if entries is None or not is_valid_tree_entries(entries):
         return None

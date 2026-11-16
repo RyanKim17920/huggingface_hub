@@ -24,6 +24,7 @@ from huggingface_hub._tree_cache import (
     TREE_CACHE_FORMAT_VERSION,
     TreeCacheEntry,
     _tree_cache_path,
+    is_valid_tree_entries,
     read_tree_cache,
     tree_cache_folder_for_local_dir,
     write_tree_cache,
@@ -127,6 +128,15 @@ class TestTreeCacheReadWrite:
         with patch("huggingface_hub._tree_cache._read_tree_cache_from_disk") as mock_read:
             assert read_tree_cache(str(tmp_path), COMMIT_HASH) == _entries()
             mock_read.assert_not_called()
+
+    def test_in_memory_cache_hit_is_not_revalidated(self, tmp_path: Path):
+        write_tree_cache(str(tmp_path), COMMIT_HASH, _entries())
+        _IN_MEMORY_TREE_CACHE.pop(_tree_cache_path(str(tmp_path), COMMIT_HASH), None)
+        with patch("huggingface_hub._tree_cache.is_valid_tree_entries", wraps=is_valid_tree_entries) as mock_validate:
+            for _ in range(3):
+                assert read_tree_cache(str(tmp_path), COMMIT_HASH) == _entries()
+        # Validated once when loaded from disk, not again on each in-memory hit (one per file in snapshot_download).
+        mock_validate.assert_called_once()
 
     @pytest.mark.skipif(os.name != "nt", reason="Windows-specific test.")
     def test_round_trip_in_deep_folder(self, tmp_path: Path):

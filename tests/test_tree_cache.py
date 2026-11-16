@@ -101,6 +101,11 @@ class TestTreeCacheReadWrite:
             )
         )
         assert read_tree_cache(str(tmp_path), COMMIT_HASH) is None
+        assert read_tree_cache(str(tmp_path), COMMIT_HASH) is None  # not memoized, so never served from memory
+
+        # Once a valid listing is fetched (e.g. after gate access is granted), it replaces the invalid one.
+        write_tree_cache(str(tmp_path), COMMIT_HASH, _entries())
+        assert read_tree_cache(str(tmp_path), COMMIT_HASH) == _entries()
 
     def test_unknown_format_version_returns_none(self, tmp_path: Path):
         path = tmp_path / "trees" / f"{COMMIT_HASH}.json"
